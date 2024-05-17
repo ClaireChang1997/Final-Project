@@ -20,6 +20,7 @@ class ViewController: UIViewController,CLLocationManagerDelegate {
     }
     
     var dataArray = [[String:Any]]() //空的 [String:Any] dictionary array 來儲存
+    var RSSIArray = [Double]()
     var locationManager: CLLocationManager = CLLocationManager()
     
     let uuid = "A3E1C063-9235-4B25-AA84-D249950AADC4"
@@ -27,6 +28,8 @@ class ViewController: UIViewController,CLLocationManagerDelegate {
     
     override func viewDidLoad() {
         super.viewDidLoad()
+        loadDataArray()
+
         
         //要求使用者授權 location service
         if CLLocationManager.isMonitoringAvailable(for: CLBeaconRegion.self){
@@ -84,7 +87,7 @@ class ViewController: UIViewController,CLLocationManagerDelegate {
 //
 //            return CGPoint(x: x, y: y)
 //            }
-    
+//    
     
     func locationManager(_ manager: CLLocationManager, didStartMonitoringFor region:CLRegion) {
         monitorResultTextView.text = "did start monitoring \(region.identifier)\n" + monitorResultTextView.text
@@ -141,6 +144,10 @@ class ViewController: UIViewController,CLLocationManagerDelegate {
     //beacon 資料載入 Dictionary
     func loadDataArray() {
         var beaconArray = [[String:Any]]()  //宣告儲存Array最後的結果的變數
+        var minor1 = 0
+        var minor2 = 0
+        var minor3 = 0
+
         
         guard let newRangingString = rangingResultTextView.text  else { return }
         let oneBeaconString = newRangingString.components(separatedBy: "\n\n")
@@ -154,27 +161,45 @@ class ViewController: UIViewController,CLLocationManagerDelegate {
                 
                 let oldMajor = Int(pendingArray[1])
                 let oldMinor = Int(pendingArray[3])
-                let oldRSSI = Double(pendingArray[5])
+                let oldRSSI =  Double(pendingArray[5])
                 let oldProximity = String(pendingArray[7])
                 let oldAccuracy = Double(pendingArray[9])
                 print("pendingArray[",count,"]=",pendingArray)
                 
+                RSSIArray.append(oldRSSI!)
                 dataArray.append(["Major": oldMajor,"Minor":oldMinor, "RSSI":oldRSSI, "Proximity":oldProximity, "Accuracy":oldAccuracy])
-                print("dataArray=",dataArray)
             }
+            RSSIArray = RSSIArray.sorted(by: >)
+            print("RSSIArray=",RSSIArray)
+            print("dataArray=",dataArray)
+            
+            
+            for item in dataArray {
+                if RSSIArray[0] == item["RSSI"] as? Double {
+                    minor1 = item["Minor"] as! Int
+                    continue
+                }
+                if RSSIArray[1] == item["RSSI"] as? Double {
+                    minor2 = item["Minor"] as! Int
+                    continue
+                }
+                if RSSIArray[2] == item["RSSI"] as? Double {
+                    minor3 = item["Minor"] as! Int
+                    continue
+                }
+            }
+            print("minor1=", minor1, "  minor2=", minor2, " minor3=", minor3,"\n")
         }
         
     }
-    func Calculatetriangle() {
-    
+//    func Calculatetriangle() {
 //    let (pointA, pointB, pointC, centroid) = calculateTriangle()
 //    
 //    print("點A: \(pointA)")
 //    print("點B: \(pointB)")
 //    print("點C: \(pointC)")
 //    print("重心: \(centroid)")
-    
-    }
+//    }
 
 }
 
