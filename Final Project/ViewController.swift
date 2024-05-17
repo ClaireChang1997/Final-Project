@@ -18,11 +18,14 @@ class ViewController: UIViewController,CLLocationManagerDelegate {
     @IBAction func loaddata(_ sender: UIButton) {
         loadDataArray()
         ClearDataArray()
+        calculateTriangle()
     }
     
     var locationManager: CLLocationManager = CLLocationManager()
     var dataFrame: [DataRow] = []    // Create an array of DataRow to represent the dataframe
     var MinorArray = [Int]()
+    var AccuracyArray = [Double]()
+
     
     // Define a struct to represent each row in the dataframe
     struct DataRow {
@@ -156,6 +159,7 @@ class ViewController: UIViewController,CLLocationManagerDelegate {
             for row in dataFrame {
                 print("Major: \(row.major), Minor: \(row.minor), RSSI: \(row.rssi), Proximity: \(row.proximity), Accuracy: \(row.accuracy)")
                 MinorArray.append(row.minor)
+                AccuracyArray.append(row.accuracy)
             }
             print("minor=",MinorArray[0],", ",MinorArray[1],", ",MinorArray[2])
         }
@@ -165,56 +169,58 @@ class ViewController: UIViewController,CLLocationManagerDelegate {
     func ClearDataArray() {
         dataFrame = []
         MinorArray = []
+        AccuracyArray = []
     }
     
     
-//        func calculateTriangle() -> (CGPoint, CGPoint, CGPoint, CGPoint) {
-//            // 計算三角形
-//            let pointA = sidePointCalculation(x1: x1, y1: y1, r1: r1, x2: x2, y2: y2, r2: r2, x3: x3, y3: y3)
-//            let pointB = sidePointCalculation(x2: x2, y2: y2, r2: r2, x3: x3, y3: y3, r3: r3, x1: x1, y1: y1)
-//            let pointC = sidePointCalculation(x1: x1, y1: y1, r1: r1, x3: x3, y3: y3, r3: r3, x2: x2, y2: y2)
-//
-//            // 計算三角形的重心
-//            let Mx = (pointA.x + pointB.x + pointC.x) / 3
-//            let My = (pointA.y + pointB.y + pointC.y) / 3
-//            let centroid = CGPoint(x: Mx, y: My)
-//
-//            return (pointA, pointB, pointC, centroid)
-//            }
-//
-//        // 邊計算
-//        func sidePointCalculation(x1: Double, y1: Double, r1: Double,
-//                                  x2: Double, y2: Double, r2: Double,
-//                                  x3: Double, y3: Double) -> CGPoint {
-//            // 在這裡實現您的邏輯，可能類似於 midpointCalculation
-//            // 佔位實現
-//            return midpointCalculation(x1: x1, y1: y1, r1: r1, x2: x2, y2: y2, r2: r2)
-//            }
-//
-//        // 中點計算
-//        func midpointCalculation(x1: Double, y1: Double, r1: Double,
-//                                 x2: Double, y2: Double, r2: Double) -> CGPoint {
-//            let a = y1 - y2 // 竖邊
-//            let b = x1 - x2 // 橫邊
-//            let rr = r1 + r2
-//            let s = r1 / rr
-//
-//            let x = abs(x1 - (b * s))
-//            let y = abs(y1 - (a * s))
-//
-//            return CGPoint(x: x, y: y)
-//            }
+    func calculateTriangle() -> (CGPoint, CGPoint, CGPoint, CGPoint) {
+        
+        let x1 = M1BeaconX[MinorArray[0]]
+        let x2 = M1BeaconX[MinorArray[1]]
+        let x3 = M1BeaconX[MinorArray[2]]
+        let y1 = M1BeaconY[MinorArray[0]]
+        let y2 = M1BeaconY[MinorArray[1]]
+        let y3 = M1BeaconY[MinorArray[2]]
+        let r1 = AccuracyArray[0]
+        let r2 = AccuracyArray[1]
+        let r3 = AccuracyArray[2]
 
-    
-    
-//    func Calculatetriangle() {
-//    let (pointA, pointB, pointC, centroid) = calculateTriangle()
-//    
-//    print("點A: \(pointA)")
-//    print("點B: \(pointB)")
-//    print("點C: \(pointC)")
-//    print("重心: \(centroid)")
-//    }
+        // 計算三角形
+        let pointA = sidePointCalculation(x1: x1, y1: y1, r1: r1, x2: x2, y2: y2, r2: r2, x3: x3, y3: y3)
+        let pointB = sidePointCalculation(x1: x2, y1: y2, r1: r2, x2: x3, y2: y3, r2: r3, x3: x1, y3: y1)
+        let pointC = sidePointCalculation(x1: x1, y1: y1, r1: r1, x2: x3, y2: y3, r2: r3, x3: x2, y3: y2)
 
+        // 計算三角形的重心
+        let Mx = (pointA.x + pointB.x + pointC.x) / 3
+        let My = (pointA.y + pointB.y + pointC.y) / 3
+        let centroid = CGPoint(x: Mx, y: My)
+
+        return (pointA, pointB, pointC, centroid)
+
+        print("點A: \(pointA)", ", ","點B: \(pointB)", ", ","點C: \(pointC)",", ","重心: \(centroid)")
+        }
+
+    // 邊計算
+    func sidePointCalculation(x1: Double, y1: Double, r1: Double,
+                              x2: Double, y2: Double, r2: Double,
+                              x3: Double, y3: Double) -> CGPoint {
+        // 在這裡實現您的邏輯，可能類似於 midpointCalculation
+        // 佔位實現
+        return midpointCalculation(x1: x1, y1: y1, r1: r1, x2: x2, y2: y2, r2: r2)
+        }
+
+    // 中點計算
+    func midpointCalculation(x1: Double, y1: Double, r1: Double,
+                             x2: Double, y2: Double, r2: Double) -> CGPoint {
+        let a = y1 - y2 // 竖邊
+        let b = x1 - x2 // 橫邊
+        let rr = r1 + r2
+        let s = r1 / rr
+
+        let x = abs(x1 - (b * s))
+        let y = abs(y1 - (a * s))
+
+        return CGPoint(x: x, y: y)
+        }
 }
 
