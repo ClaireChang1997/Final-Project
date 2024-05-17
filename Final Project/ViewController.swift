@@ -17,11 +17,29 @@ class ViewController: UIViewController,CLLocationManagerDelegate {
     
     @IBAction func loaddata(_ sender: UIButton) {
         loadDataArray()
+        ClearDataArray()
     }
     
-    var dataArray = [[String:Any]]() //空的 [String:Any] dictionary array 來儲存
-    var RSSIArray = [Double]()
     var locationManager: CLLocationManager = CLLocationManager()
+    var dataFrame: [DataRow] = []    // Create an array of DataRow to represent the dataframe
+    var MinorArray = [Int]()
+    
+    // Define a struct to represent each row in the dataframe
+    struct DataRow {
+        var major: Int
+        var minor: Int
+        var rssi: Double
+        var proximity: String
+        var accuracy: Double
+    }
+    
+    //Major 1 的四個 Beacon
+    let M1BeaconX = [2.21, 4.3, 4.3, 2.64]
+    let M1BeaconY = [0, 5.7, 7.8, 11.75]
+    //Major 2 的六個 Beacon
+    let M2BeaconX = [0, 2.6, 5.71, 9.7, 13.5, 15.1, 17.5, 16.9]
+    let M2BeaconY = [0, 2.67, 2.67, 2.67, 2.67, 0, 0, 3.9]
+    
     
     let uuid = "A3E1C063-9235-4B25-AA84-D249950AADC4"
     let identfier = "esd region"
@@ -39,7 +57,6 @@ class ViewController: UIViewController,CLLocationManagerDelegate {
         }
         
         let region = CLBeaconRegion(uuid: UUID.init(uuidString: uuid)!, identifier: identfier) //創造包含同樣 uuid 的 beacon 的 region
-        
         locationManager.delegate = self //設定 locaiton manager 的 delegate
         
         //設定region monitoring 要被通知的時機
@@ -48,46 +65,7 @@ class ViewController: UIViewController,CLLocationManagerDelegate {
         region.notifyOnExit = true
         
         locationManager.startMonitoring(for: region)  //開始 monitoring
-        
     }
-            
-//        func calculateTriangle() -> (CGPoint, CGPoint, CGPoint, CGPoint) {
-//            // 計算三角形
-//            let pointA = sidePointCalculation(x1: x1, y1: y1, r1: r1, x2: x2, y2: y2, r2: r2, x3: x3, y3: y3)
-//            let pointB = sidePointCalculation(x2: x2, y2: y2, r2: r2, x3: x3, y3: y3, r3: r3, x1: x1, y1: y1)
-//            let pointC = sidePointCalculation(x1: x1, y1: y1, r1: r1, x3: x3, y3: y3, r3: r3, x2: x2, y2: y2)
-//            
-//            // 計算三角形的重心
-//            let Mx = (pointA.x + pointB.x + pointC.x) / 3
-//            let My = (pointA.y + pointB.y + pointC.y) / 3
-//            let centroid = CGPoint(x: Mx, y: My)
-//
-//            return (pointA, pointB, pointC, centroid)
-//            }
-//        
-//        // 邊計算
-//        func sidePointCalculation(x1: Double, y1: Double, r1: Double,
-//                                  x2: Double, y2: Double, r2: Double,
-//                                  x3: Double, y3: Double) -> CGPoint {
-//            // 在這裡實現您的邏輯，可能類似於 midpointCalculation
-//            // 佔位實現
-//            return midpointCalculation(x1: x1, y1: y1, r1: r1, x2: x2, y2: y2, r2: r2)
-//            }
-//
-//        // 中點計算
-//        func midpointCalculation(x1: Double, y1: Double, r1: Double,
-//                                 x2: Double, y2: Double, r2: Double) -> CGPoint {
-//            let a = y1 - y2 // 竖邊
-//            let b = x1 - x2 // 橫邊
-//            let rr = r1 + r2
-//            let s = r1 / rr
-//
-//            let x = abs(x1 - (b * s))
-//            let y = abs(y1 - (a * s))
-//
-//            return CGPoint(x: x, y: y)
-//            }
-//    
     
     func locationManager(_ manager: CLLocationManager, didStartMonitoringFor region:CLRegion) {
         monitorResultTextView.text = "did start monitoring \(region.identifier)\n" + monitorResultTextView.text
@@ -152,46 +130,83 @@ class ViewController: UIViewController,CLLocationManagerDelegate {
         guard let newRangingString = rangingResultTextView.text  else { return }
         let oneBeaconString = newRangingString.components(separatedBy: "\n\n")
         let a = oneBeaconString.count-1
-        print("beacon count=",a)
+        print("\n","beacon count=",a)
         
         //iterate 每⼀筆資料的string
         if a > 1 {
             for count in 0...a-1 {
                 let pendingArray = oneBeaconString[count].components(separatedBy: " ")
                 
-                let oldMajor = Int(pendingArray[1])
-                let oldMinor = Int(pendingArray[3])
-                let oldRSSI =  Double(pendingArray[5])
+                let oldMajor = Int(pendingArray[1])!
+                let oldMinor = Int(pendingArray[3])!
+                let oldRSSI =  Double(pendingArray[5])!
                 let oldProximity = String(pendingArray[7])
-                let oldAccuracy = Double(pendingArray[9])
+                let oldAccuracy = Double(pendingArray[9])!
                 print("pendingArray[",count,"]=",pendingArray)
                 
-                RSSIArray.append(oldRSSI!)
-                dataArray.append(["Major": oldMajor,"Minor":oldMinor, "RSSI":oldRSSI, "Proximity":oldProximity, "Accuracy":oldAccuracy])
+                let newRow = DataRow(major: oldMajor, minor: oldMinor, rssi: oldRSSI, proximity: oldProximity, accuracy: oldAccuracy)
+                dataFrame.append(newRow)
+
             }
-            RSSIArray = RSSIArray.sorted(by: >)
-            print("RSSIArray=",RSSIArray)
-            print("dataArray=",dataArray)
+
+            // Sort the dataframe by RSSI in ascending order
+            dataFrame.sort { $0.rssi > $1.rssi }
             
-            
-            for item in dataArray {
-                if RSSIArray[0] == item["RSSI"] as? Double {
-                    minor1 = item["Minor"] as! Int
-                    continue
-                }
-                if RSSIArray[1] == item["RSSI"] as? Double {
-                    minor2 = item["Minor"] as! Int
-                    continue
-                }
-                if RSSIArray[2] == item["RSSI"] as? Double {
-                    minor3 = item["Minor"] as! Int
-                    continue
-                }
+            // Print the sorted dataframe
+            for row in dataFrame {
+                print("Major: \(row.major), Minor: \(row.minor), RSSI: \(row.rssi), Proximity: \(row.proximity), Accuracy: \(row.accuracy)")
+                MinorArray.append(row.minor)
             }
-            print("minor1=", minor1, "  minor2=", minor2, " minor3=", minor3,"\n")
+            print("minor=",MinorArray[0],", ",MinorArray[1],", ",MinorArray[2])
         }
         
     }
+    
+    func ClearDataArray() {
+        dataFrame = []
+        MinorArray = []
+    }
+    
+    
+//        func calculateTriangle() -> (CGPoint, CGPoint, CGPoint, CGPoint) {
+//            // 計算三角形
+//            let pointA = sidePointCalculation(x1: x1, y1: y1, r1: r1, x2: x2, y2: y2, r2: r2, x3: x3, y3: y3)
+//            let pointB = sidePointCalculation(x2: x2, y2: y2, r2: r2, x3: x3, y3: y3, r3: r3, x1: x1, y1: y1)
+//            let pointC = sidePointCalculation(x1: x1, y1: y1, r1: r1, x3: x3, y3: y3, r3: r3, x2: x2, y2: y2)
+//
+//            // 計算三角形的重心
+//            let Mx = (pointA.x + pointB.x + pointC.x) / 3
+//            let My = (pointA.y + pointB.y + pointC.y) / 3
+//            let centroid = CGPoint(x: Mx, y: My)
+//
+//            return (pointA, pointB, pointC, centroid)
+//            }
+//
+//        // 邊計算
+//        func sidePointCalculation(x1: Double, y1: Double, r1: Double,
+//                                  x2: Double, y2: Double, r2: Double,
+//                                  x3: Double, y3: Double) -> CGPoint {
+//            // 在這裡實現您的邏輯，可能類似於 midpointCalculation
+//            // 佔位實現
+//            return midpointCalculation(x1: x1, y1: y1, r1: r1, x2: x2, y2: y2, r2: r2)
+//            }
+//
+//        // 中點計算
+//        func midpointCalculation(x1: Double, y1: Double, r1: Double,
+//                                 x2: Double, y2: Double, r2: Double) -> CGPoint {
+//            let a = y1 - y2 // 竖邊
+//            let b = x1 - x2 // 橫邊
+//            let rr = r1 + r2
+//            let s = r1 / rr
+//
+//            let x = abs(x1 - (b * s))
+//            let y = abs(y1 - (a * s))
+//
+//            return CGPoint(x: x, y: y)
+//            }
+
+    
+    
 //    func Calculatetriangle() {
 //    let (pointA, pointB, pointC, centroid) = calculateTriangle()
 //    
