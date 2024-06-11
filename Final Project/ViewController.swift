@@ -13,12 +13,18 @@ class ViewController: UIViewController,CLLocationManagerDelegate {
     
     @IBOutlet weak var monitorResultTextView: UITextView!
     @IBOutlet weak var rangingResultTextView: UITextView!
-    @IBOutlet weak var location: UITextField!
+    @IBOutlet weak var location: UITextView!
     
-    @IBAction func loaddata(_ sender: UIButton) {
+    @IBAction func loaddata1(_ sender: UIButton) {
         loadDataArray()
+        calculateM1Triangle()
         ClearDataArray()
-        calculateTriangle()
+    }
+    
+    @IBAction func loaddata2(_ sender: UIButton) {
+        loadDataArray()
+        calculateM2Triangle()
+        ClearDataArray()
     }
     
     var locationManager: CLLocationManager = CLLocationManager()
@@ -39,7 +45,7 @@ class ViewController: UIViewController,CLLocationManagerDelegate {
     //Major 1 的四個 Beacon
     let M1BeaconX = [2.21, 4.3, 4.3, 2.64]
     let M1BeaconY = [0, 5.7, 7.8, 11.75]
-    //Major 2 的六個 Beacon
+    //Major 2 的八個 Beacon
     let M2BeaconX = [0, 2.6, 5.71, 9.7, 13.5, 15.1, 17.5, 16.9]
     let M2BeaconY = [0, 2.67, 2.67, 2.67, 2.67, 0, 0, 3.9]
     
@@ -102,7 +108,7 @@ class ViewController: UIViewController,CLLocationManagerDelegate {
         rangingResultTextView.text = ""        //清空原本的ranging textview
         
         //根據rssi大小排序，rssi大的排在前面
-        let orderedBeaconArray = beacons.sorted(by: { (b1, b2) -> Bool in return b1.rssi > b2.rssi})
+        //let orderedBeaconArray = beacons.sorted(by: { (b1, b2) -> Bool in return b1.rssi > b2.rssi})
         
         //iterate 每個收到的 beacon
         for beacon in beacons {
@@ -124,11 +130,6 @@ class ViewController: UIViewController,CLLocationManagerDelegate {
     
     //beacon 資料載入 Dictionary
     func loadDataArray() {
-        var beaconArray = [[String:Any]]()  //宣告儲存Array最後的結果的變數
-        var minor1 = 0
-        var minor2 = 0
-        var minor3 = 0
-
         
         guard let newRangingString = rangingResultTextView.text  else { return }
         let oneBeaconString = newRangingString.components(separatedBy: "\n\n")
@@ -162,6 +163,7 @@ class ViewController: UIViewController,CLLocationManagerDelegate {
                 AccuracyArray.append(row.accuracy)
             }
             print("minor=",MinorArray[0],", ",MinorArray[1],", ",MinorArray[2])
+            print("minorArray=",MinorArray)
         }
         
     }
@@ -172,15 +174,14 @@ class ViewController: UIViewController,CLLocationManagerDelegate {
         AccuracyArray = []
     }
     
-    
-    func calculateTriangle() -> (CGPoint, CGPoint, CGPoint, CGPoint) {
+    func calculateM1Triangle() -> (CGPoint, CGPoint, CGPoint, CGPoint) {
         
-        let x1 = M1BeaconX[MinorArray[0]]
-        let x2 = M1BeaconX[MinorArray[1]]
-        let x3 = M1BeaconX[MinorArray[2]]
-        let y1 = M1BeaconY[MinorArray[0]]
-        let y2 = M1BeaconY[MinorArray[1]]
-        let y3 = M1BeaconY[MinorArray[2]]
+        let x1 = M1BeaconX[MinorArray[0]-1]
+        let x2 = M1BeaconX[MinorArray[1]-1]
+        let x3 = M1BeaconX[MinorArray[2]-1]
+        let y1 = M1BeaconY[MinorArray[0]-1]
+        let y2 = M1BeaconY[MinorArray[1]-1]
+        let y3 = M1BeaconY[MinorArray[2]-1]
         let r1 = AccuracyArray[0]
         let r2 = AccuracyArray[1]
         let r3 = AccuracyArray[2]
@@ -194,11 +195,46 @@ class ViewController: UIViewController,CLLocationManagerDelegate {
         let Mx = (pointA.x + pointB.x + pointC.x) / 3
         let My = (pointA.y + pointB.y + pointC.y) / 3
         let centroid = CGPoint(x: Mx, y: My)
+        
+        let dist = ["A","B","C","C (強制)"]
+        var dd = 5
+        
+        if MinorArray[0] == 1 && AccuracyArray[0] < 2 {dd = 3}
+        else if My > 7.21 {dd = 0}
+        else if My < 2.67 {dd = 2}
+        else {dd = 1}
+
+        location.text = "在第1關，平板的位置是:\n \(centroid)\n"+"屬於"+"\(dist[dd])區\n\n" + "點A: \(pointA)\n" + "點B: \(pointB)\n" + "點C: \(pointC)\n"
+        
+        return (pointA, pointB, pointC, centroid)
+        }
+    func calculateM2Triangle() -> (CGPoint, CGPoint, CGPoint, CGPoint) {
+        
+        let x1 = M2BeaconX[MinorArray[0]-1]
+        let x2 = M2BeaconX[MinorArray[1]-1]
+        let x3 = M2BeaconX[MinorArray[2]-1]
+        let y1 = M2BeaconY[MinorArray[0]-1]
+        let y2 = M2BeaconY[MinorArray[1]-1]
+        let y3 = M2BeaconY[MinorArray[2]-1]
+        let r1 = AccuracyArray[0]
+        let r2 = AccuracyArray[1]
+        let r3 = AccuracyArray[2]
+
+        // 計算三角形
+        let pointA = sidePointCalculation(x1: x1, y1: y1, r1: r1, x2: x2, y2: y2, r2: r2, x3: x3, y3: y3)
+        let pointB = sidePointCalculation(x1: x2, y1: y2, r1: r2, x2: x3, y2: y3, r2: r3, x3: x1, y3: y1)
+        let pointC = sidePointCalculation(x1: x1, y1: y1, r1: r1, x2: x3, y2: y3, r2: r3, x3: x2, y3: y2)
+
+        // 計算三角形的重心
+        let Mx = (pointA.x + pointB.x + pointC.x) / 3
+        let My = (pointA.y + pointB.y + pointC.y) / 3
+        let centroid = CGPoint(x: Mx, y: My)
+        
+        location.text = "在第2關，平板的位置是:\n \(centroid)\n\n" + "點A: \(pointA)\n" + "點B: \(pointB)\n" + "點C: \(pointC)\n"
 
         return (pointA, pointB, pointC, centroid)
-
-        print("點A: \(pointA)", ", ","點B: \(pointB)", ", ","點C: \(pointC)",", ","重心: \(centroid)")
         }
+    
 
     // 邊計算
     func sidePointCalculation(x1: Double, y1: Double, r1: Double,
